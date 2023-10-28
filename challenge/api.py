@@ -7,6 +7,7 @@ import numpy as np
 app = FastAPI()
 model = DelayModel()
 data = pd.read_csv(filepath_or_buffer="data/data.csv")
+#Model initialization
 features, target = model.preprocess(
             data=data,
             target_column="delay"
@@ -16,6 +17,7 @@ model.fit(
     target=target
 )
 OPERAS = list(set(data.OPERA))
+
 @app.get("/health", status_code=200)
 async def get_health() -> dict:
     return {
@@ -24,7 +26,14 @@ async def get_health() -> dict:
 
 @app.post("/predict", status_code=200)
 async def post_predict(data: dict) -> dict:
-    
+    """
+    Respond to a POST request at the "/predict" path.       
+
+    Args:
+        data (dict): data
+    Returns:
+        dict
+    """
     data = pd.DataFrame(data["flights"],dtype={"OPERA":str,"TIPOVUELO":str,"MES":int})
     if  not data['MES'].between(1, 12,inclusive=True).all():
         raise HTTPException(status_code=404, detail="Incorrect MES.")

@@ -6,17 +6,17 @@ import numpy as np
 
 app = FastAPI()
 model = DelayModel()
-data = pd.read_csv(filepath_or_buffer="data/data.csv")
+datacsv = pd.read_csv(filepath_or_buffer="data/data.csv")
 #Model initialization
 features, target = model.preprocess(
-            data=data,
+            data=datacsv,
             target_column="delay"
         )
 model.fit(
     features=features,
     target=target
 )
-OPERAS = list(set(data.OPERA))
+OPERAS = list(set(datacsv.OPERA))
 
 @app.get("/health", status_code=200)
 async def get_health() -> dict:

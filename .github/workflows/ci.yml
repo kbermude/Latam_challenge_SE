@@ -27,10 +27,6 @@ jobs:
         python -m pip install -r requirements-test.txt
         python -m pip install -r requirements.txt
 
-    - name: Build
-      run: |
-        make build
-
     - name: Run tests
       run: |
         make model-test

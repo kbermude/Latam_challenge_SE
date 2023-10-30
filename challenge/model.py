@@ -12,12 +12,27 @@ from sklearn.metrics import confusion_matrix, classification_report
 import xgboost as xgb
 from xgboost import plot_importance
 
+
+threshold_in_minutes = 15
+
 class DelayModel:
 
     def __init__(
         self
     ):
         self._model = xgb.XGBClassifier(random_state=1, learning_rate=0.01, scale_pos_weight=4.4402380952380955)
+        self.topfeatures= [
+        "OPERA_Latin American Wings", 
+        "MES_7",
+        "MES_10",
+        "OPERA_Grupo LATAM",
+        "MES_12",
+        "TIPOVUELO_I",
+        "MES_4",
+        "MES_11",
+        "OPERA_Sky Airline",
+        "OPERA_Copa Air"
+    ]
 
     def get_period_day(self,date:str):
         """
@@ -102,22 +117,10 @@ class DelayModel:
             or
             pd.DataFrame: features.
         """
-        top_10_features = [
-            "OPERA_Latin American Wings", 
-            "MES_7",
-            "MES_10",
-            "OPERA_Grupo LATAM",
-            "MES_12",
-            "TIPOVUELO_I",
-            "MES_4",
-            "MES_11",
-            "OPERA_Sky Airline",
-            "OPERA_Copa Air"
-        ]
+
         data['period_day'] = data['Fecha-I'].apply(self.get_period_day)
         data['high_season'] = data['Fecha-I'].apply(self.is_high_season)
         data['min_diff'] = data.apply(self.get_min_diff, axis = 1)
-        threshold_in_minutes = 15
         data['delay'] = np.where(data['min_diff'] > threshold_in_minutes, 1, 0)
         data = shuffle(data[['OPERA', 'MES', 'TIPOVUELO', 'SIGLADES', 'DIANOM', 'delay']], random_state = 111)
         features = pd.concat([
@@ -125,7 +128,7 @@ class DelayModel:
             pd.get_dummies(data['TIPOVUELO'], prefix = 'TIPOVUELO'), 
             pd.get_dummies(data['MES'], prefix = 'MES')], 
             axis = 1
-        )[top_10_features]
+        )[self.topfeatures]
         if target_column is not None:
             target = pd.DataFrame(data[target_column])
             return features,target

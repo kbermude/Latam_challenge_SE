@@ -6,17 +6,25 @@ import numpy as np
 
 app = FastAPI()
 model = DelayModel()
-datacsv = pd.read_csv(filepath_or_buffer="data/data.csv")
-#Model initialization
+datafull = pd.read_csv(filepath_or_buffer="data/data.csv", low_memory=False)
+concat_df = pd.concat([
+            pd.get_dummies(datafull['OPERA'], prefix = 'OPERA'),
+            pd.get_dummies(datafull['TIPOVUELO'], prefix = 'TIPOVUELO'), 
+            pd.get_dummies(datafull['MES'], prefix = 'MES')], 
+            axis = 1
+        )
+cols = list(concat_df.columns)
+lencols = len(cols)
+
 features, target = model.preprocess(
-            data=datacsv,
+            data=datafull,
             target_column="delay"
         )
 model.fit(
     features=features,
     target=target
 )
-OPERAS = list(set(datacsv.OPERA))
+
 
 @app.get("/health", status_code=200)
 async def get_health() -> dict:
@@ -24,22 +32,29 @@ async def get_health() -> dict:
         "status": "OK"
     }
 
+@app.get("/")
+def home():
+    return {"message":"api iniciada"}
+
 @app.post("/predict", status_code=200)
 async def post_predict(data: dict) -> dict:
-    """
-    Respond to a POST request at the "/predict" path.       
-
-    Args:
-        data (dict): data
-    Returns:
-        dict
-    """
-    data = pd.DataFrame(data["flights"],dtype={"OPERA":str,"TIPOVUELO":str,"MES":int})
-    if  not data['MES'].between(1, 12,inclusive=True).all():
-        raise HTTPException(status_code=404, detail="Incorrect MES.")
-    if  np.isin(data["TIPOVUELO"],["N","I"]).all():
-        raise HTTPException(status_code=404, detail="Incorrect TIPOVUELO.")
-    if  np.isin(data["OPERA"],OPERAS).all():
-        raise HTTPException(status_code=404, detail="Incorrect OPERA.")
-    results = model.predict(data)    
+    df = pd.DataFrame(data["flights"])
+    rows = []
+    for _,row in df.iterrows():
+        f_row = [0]*lencols
+        opera = f"OPERA_{row['OPERA']}"
+        tipovuelo = f"TIPOVUELO_{row['TIPOVUELO']}"
+        mes = f"MES_{row['MES']}"
+        if opera not in cols:
+            raise HTTPException(status_code=400, detail="OPERA incorrecto.")
+        f_row[cols.index(opera)]=1
+        if tipovuelo not in cols:
+            raise HTTPException(status_code=400, detail="TIPOVUELO incorrecto.")
+        f_row[cols.index(tipovuelo)]=1
+        if mes not in cols:
+            raise HTTPException(status_code=400, detail="MES incorrecto.")
+        f_row[cols.index(mes)]=1
+        rows.append(f_row)
+    df= pd.DataFrame(rows,columns=cols)[model.topfeatures]
+    results = model.predict(df)
     return {"predict": results}
